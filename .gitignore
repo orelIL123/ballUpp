@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+nestjs-server/.env
+config/firebase/*.plist
+config/firebase/*.json
+nestjs-server/config/firebase/*.json
 
 # typescript
 *.tsbuildinfo

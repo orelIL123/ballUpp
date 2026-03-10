@@ -8,6 +8,9 @@
       ]
     }
   },
+  "exclude": [
+    "nestjs-server"
+  ],
   "include": [
     "**/*.ts",
     "**/*.tsx",
