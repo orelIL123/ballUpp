@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -38,6 +38,8 @@ export default function OnboardingScreen() {
   const profile = useAuthStore((state) => state.profile);
   const refreshProfile = useAuthStore((state) => state.refreshProfile);
   const isGuest = useAuthStore((state) => state.isGuest);
+  const pendingDisplayName = useAuthStore((state) => state.pendingDisplayName);
+  const setPendingDisplayName = useAuthStore((state) => state.setPendingDisplayName);
   const [photoUri, setPhotoUri] = useState<string | null>(profile?.photoURL ?? null);
   const [videoUri, setVideoUri] = useState<string | null>(profile?.videoURL ?? null);
   const [loading, setLoading] = useState(false);
@@ -51,13 +53,21 @@ export default function OnboardingScreen() {
   } = useForm<OnboardingForm>({
     resolver: zodResolver(schema),
     defaultValues: {
-      displayName: profile?.displayName ?? '',
+      displayName: profile?.displayName ?? pendingDisplayName ?? '',
       city: profile?.city ?? '',
       area: profile?.location?.area ?? '',
       level: profile?.level ?? 'beginner',
       gender: profile?.gender ?? 'other',
     },
   });
+
+  // השם שהתקבל מהרשמה – משמש פעם אחת ואז מנקים
+  useEffect(() => {
+    if (pendingDisplayName) {
+      setValue('displayName', pendingDisplayName);
+      setPendingDisplayName(null);
+    }
+  }, [pendingDisplayName, setValue, setPendingDisplayName]);
 
   const currentLevel = watch('level');
   const currentGender = watch('gender');

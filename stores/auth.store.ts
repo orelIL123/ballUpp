@@ -15,9 +15,12 @@ type AuthState = {
   error: string | null;
   isGuest: boolean;
   demoUserId: string | null;
+  /** שם שנאסף בהרשמה (טלפון) ומעבירים ל-onboarding */
+  pendingDisplayName: string | null;
   bootstrap: () => () => void;
   refreshProfile: (uid?: string) => Promise<UserProfile | null>;
   setError: (error: string | null) => void;
+  setPendingDisplayName: (name: string | null) => void;
   loginAsGuest: () => void;
   createDemoAccount: (input: {
     displayName: string;
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
   isGuest: false,
   demoUserId: null,
+  pendingDisplayName: null,
   bootstrap: () =>
     observeAuthState(async (user) => {
       if (!user) {
@@ -46,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           error: null,
           isGuest: false,
           demoUserId: null,
+          pendingDisplayName: null,
         });
         return;
       }
@@ -81,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   setError: (error) => set({ error }),
+  setPendingDisplayName: (name) => set({ pendingDisplayName: name }),
   loginAsGuest: () =>
     set({
       status: 'authenticated',

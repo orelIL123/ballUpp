@@ -1,62 +1,62 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { BlurView } from 'expo-blur';
-import { Link, router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { Button } from '@/components/ui/Button';
-import { theme } from '@/constants/theme';
-import { loginWithEmail } from '@/services/auth.service';
+import { loginWithPhoneAndPassword } from '@/services/auth.service';
 import { isFirebaseConfigured } from '@/services/firebase';
 import { useAuthStore } from '@/stores/auth.store';
 
-const schema = z.object({
-  email: z.email('יש להזין אימייל תקין.'),
-  password: z.string().min(6, 'הסיסמה חייבת להכיל לפחות 6 תווים.'),
-});
+const logoSource = require('@/assets/images/logo.png');
 
-type LoginForm = z.infer<typeof schema>;
+const PHONE_REGEX = /^0?[2-9]\d{7,8}$/;
 
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const loginAsGuest = useAuthStore((state) => state.loginAsGuest);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const onSubmit = handleSubmit(async (values) => {
+  const handleLogin = async () => {
+    setError(null);
+    const trimmedPhone = phone.replace(/\s/g, '');
+    const digits = trimmedPhone.replace(/\D/g, '');
+    if (!digits || !PHONE_REGEX.test(digits)) {
+      setError('יש להזין מספר טלפון תקין (למשל 0501234567)');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('הסיסמה חייבת להכיל לפחות 6 תווים');
+      return;
+    }
     setLoading(true);
     try {
-      await loginWithEmail(values.email, values.password);
+      await loginWithPhoneAndPassword(trimmedPhone, password);
       router.replace('/');
-    } catch (error) {
-      Alert.alert('התחברות נכשלה', error instanceof Error ? error.message : 'לא הצלחנו להתחבר.');
+    } catch (e) {
+      Alert.alert(
+        'התחברות נכשלה',
+        e instanceof Error ? e.message : 'טלפון או סיסמה שגויים. נסה שוב.',
+      );
     } finally {
       setLoading(false);
     }
-  });
+  };
 
   return (
     <LinearGradient colors={['#2A9CF1', '#47A8F3', '#88CAF8', '#E4C89A']} style={styles.root}>
@@ -68,17 +68,11 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <View style={styles.logoWrap}>
-              <SymbolView name="circle.grid.2x2.fill" size={34} tintColor="#FFFFFF" />
+              <Image source={logoSource} style={styles.logoImage} resizeMode="contain" />
             </View>
             <Text style={styles.kicker}>FOOTVOLLEY SOCIAL</Text>
-            <Text style={styles.title}>בואו להקפיץ איתי</Text>
+            <Text style={styles.title}>בואו להקפיץ</Text>
             <Text style={styles.subtitle}>מתחברים, קובעים מעגל, נפגשים על החול ונותנים לכדור לעוף.</Text>
-            <View style={styles.ball}>
-              <View style={[styles.ballStripe, styles.ballStripeYellow]} />
-              <View style={[styles.ballStripe, styles.ballStripeBlue]} />
-              <View style={[styles.ballStripe, styles.ballStripeWhite]} />
-              <Text style={styles.ballText}>MIKASA</Text>
-            </View>
           </View>
 
           <BlurView intensity={56} tint="light" style={styles.card}>
@@ -97,48 +91,43 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <View style={styles.fieldWrap}>
-                      <Text style={styles.label}>אימייל</Text>
-                      <TextInput
-                        value={value}
-                        onChangeText={onChange}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        textAlign="left"
-                        placeholder="your@email.com"
-                        placeholderTextColor="#8796A6"
-                        style={styles.input}
-                      />
-                      {errors.email?.message ? <Text style={styles.error}>{errors.email.message}</Text> : null}
-                    </View>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, value } }) => (
-                    <View style={styles.fieldWrap}>
-                      <Text style={styles.label}>סיסמה</Text>
-                      <TextInput
-                        value={value}
-                        onChangeText={onChange}
-                        secureTextEntry
-                        textAlign="left"
-                        placeholder="••••••••"
-                        placeholderTextColor="#8796A6"
-                        style={styles.input}
-                      />
-                      {errors.password?.message ? <Text style={styles.error}>{errors.password.message}</Text> : null}
-                    </View>
-                  )}
-                />
-
-                <Button title="התחברות" loading={loading} onPress={onSubmit} style={styles.loginButton} />
+                <View style={styles.fieldWrap}>
+                  <Text style={styles.label}>שם מלא</Text>
+                  <TextInput
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    textAlign="right"
+                    placeholder="איך קוראים לך?"
+                    placeholderTextColor="#8796A6"
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.fieldWrap}>
+                  <Text style={styles.label}>מספר טלפון</Text>
+                  <TextInput
+                    value={phone}
+                    onChangeText={(t) => { setPhone(t); setError(null); }}
+                    keyboardType="phone-pad"
+                    textAlign="right"
+                    placeholder="0501234567"
+                    placeholderTextColor="#8796A6"
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.fieldWrap}>
+                  <Text style={styles.label}>סיסמה</Text>
+                  <TextInput
+                    value={password}
+                    onChangeText={(t) => { setPassword(t); setError(null); }}
+                    secureTextEntry
+                    textAlign="right"
+                    placeholder="••••••••"
+                    placeholderTextColor="#8796A6"
+                    style={styles.input}
+                  />
+                </View>
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+                <Button title="התחברות" loading={loading} onPress={handleLogin} style={styles.loginButton} />
 
                 <View style={styles.dividerRow}>
                   <View style={styles.dividerLine} />
@@ -156,8 +145,10 @@ export default function LoginScreen() {
                   style={styles.guestButton}
                 />
 
-                <Link href="/(auth)/register" style={styles.registerLink}>
-                  <Text style={styles.registerText}>אין לך חשבון? להרשמה</Text>
+                <Link href="/(auth)/register" asChild>
+                  <Pressable style={({ pressed }) => [styles.registerButton, pressed && styles.registerButtonPressed]}>
+                    <Text style={styles.registerButtonText}>אין לך חשבון? להרשמה</Text>
+                  </Pressable>
                 </Link>
               </>
             )}
@@ -171,18 +162,13 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  flex: { flex: 1 },
   container: {
     flexGrow: 1,
     paddingHorizontal: 18,
     paddingTop: 40,
     paddingBottom: 24,
-    justifyContent: 'space-between',
     gap: 18,
   },
   glow: {
@@ -216,8 +202,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoWrap: {
-    width: 74,
-    height: 74,
+    width: 88,
+    height: 88,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -229,7 +215,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 5,
+    overflow: 'hidden',
   },
+  logoImage: { width: 76, height: 76 },
   kicker: {
     marginTop: 8,
     fontSize: 13,
@@ -248,55 +236,11 @@ const styles = StyleSheet.create({
     textShadowRadius: 7,
   },
   subtitle: {
-    maxWidth: 580,
     fontSize: 18,
     lineHeight: 30,
     color: '#ECF6FF',
     writingDirection: 'rtl',
     textAlign: 'center',
-  },
-  ball: {
-    marginTop: 6,
-    width: 84,
-    height: 84,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: '#FFE38A',
-    overflow: 'hidden',
-    backgroundColor: '#2F57A8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-18deg' }],
-  },
-  ballStripe: {
-    position: 'absolute',
-    width: 118,
-    height: 24,
-    borderRadius: 24,
-  },
-  ballStripeYellow: {
-    top: 8,
-    right: -10,
-    backgroundColor: '#F6CB3B',
-    transform: [{ rotate: '16deg' }],
-  },
-  ballStripeBlue: {
-    top: 34,
-    left: -10,
-    backgroundColor: '#2E4E9A',
-    transform: [{ rotate: '-8deg' }],
-  },
-  ballStripeWhite: {
-    bottom: 10,
-    right: -6,
-    backgroundColor: '#FFFFFF',
-    transform: [{ rotate: '-16deg' }],
-  },
-  ballText: {
-    color: '#254689',
-    fontSize: 12,
-    fontWeight: '900',
-    transform: [{ rotate: '18deg' }],
   },
   card: {
     borderRadius: 30,
@@ -307,9 +251,7 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: '#FFFFFF1F',
   },
-  fieldWrap: {
-    gap: 7,
-  },
+  fieldWrap: { gap: 7 },
   label: {
     color: '#F8FBFF',
     fontSize: 17,
@@ -331,6 +273,7 @@ const styles = StyleSheet.create({
     color: '#FFD2D2',
     textAlign: 'right',
     writingDirection: 'rtl',
+    fontSize: 14,
   },
   loginButton: {
     marginTop: 6,
@@ -365,13 +308,21 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF2E',
     shadowOpacity: 0,
   },
-  registerLink: {
-    alignSelf: 'center',
-    marginTop: 4,
+  registerButton: {
+    minHeight: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
   },
-  registerText: {
+  registerButtonPressed: { opacity: 0.85 },
+  registerButtonText: {
     color: '#F2FAFF',
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 16,
     writingDirection: 'rtl',
   },
   helperText: {
@@ -380,7 +331,5 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  bottomSpacer: {
-    height: Platform.OS === 'ios' ? 12 : 6,
-  },
+  bottomSpacer: { height: Platform.OS === 'ios' ? 12 : 6 },
 });
