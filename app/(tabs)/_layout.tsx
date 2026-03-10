@@ -86,7 +86,7 @@ export default function TabLayout() {
 }
 
 const logoSource = require('@/assets/images/logo.png');
-const circleLogoSource = require('@/assets/images/logo-new.png');
+const circleLogoSource = require('@/assets/images/ball-icon.png');
 
 function TopBrand() {
   return (
@@ -111,11 +111,11 @@ function CustomTabBar({ state, navigation, descriptors, insets }: BottomTabBarPr
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 10 : 8) }]}>
       <View style={styles.shell}>
-        <BlurView intensity={80} tint="light" style={styles.blurContainer}>
+        <BlurView intensity={50} tint="light" style={styles.blurContainer}>
           <LinearGradient
-            colors={['rgba(198,82,255,0.82)', 'rgba(142,47,237,0.88)', 'rgba(106,23,223,0.92)']}
-            start={{ x: 0, y: 0.2 }}
-            end={{ x: 1, y: 0.85 }}
+            colors={['rgba(255,255,255,0.28)', 'rgba(240,240,255,0.18)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFillObject}
           />
           <View style={styles.tabBar}>
@@ -129,7 +129,7 @@ function CustomTabBar({ state, navigation, descriptors, insets }: BottomTabBarPr
                   label={label}
                   focused={focused}
                   onPress={() => navigation.navigate(name)}
-                  icon={<Icon size={24} color={focused ? '#FFFFFF' : '#F5D9FF'} strokeWidth={2.4} />}
+                  icon={<Icon size={24} color={focused ? '#6A17DF' : '#8B7AA0'} strokeWidth={2.4} />}
                 />
               );
             })}
@@ -146,7 +146,7 @@ function CustomTabBar({ state, navigation, descriptors, insets }: BottomTabBarPr
                   label={label}
                   focused={focused}
                   onPress={() => navigation.navigate(name)}
-                  icon={<Icon size={24} color={focused ? '#FFFFFF' : '#F5D9FF'} strokeWidth={2.4} />}
+                  icon={<Icon size={24} color={focused ? '#6A17DF' : '#8B7AA0'} strokeWidth={2.4} />}
                 />
               );
             })}
@@ -157,8 +157,8 @@ function CustomTabBar({ state, navigation, descriptors, insets }: BottomTabBarPr
           style={({ pressed }) => [styles.mikasaWrap, pressed && styles.mikasaWrapPressed]}
           onPress={() => router.push('/(tabs)/create-circle')}
         >
-          <View style={styles.mikasaButton}>
-            <Image source={circleLogoSource} style={styles.circleLogoImage} resizeMode="cover" />
+          <View style={styles.mikasaGlow}>
+            <Image source={circleLogoSource} style={styles.circleLogoImage} resizeMode="contain" />
           </View>
         </Pressable>
       </View>
@@ -231,11 +231,11 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    shadowColor: '#6D1CD6',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.26,
-    shadowRadius: 24,
+    borderColor: 'rgba(255,255,255,0.6)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
     elevation: 18,
   },
   tabBar: {
@@ -260,12 +260,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 11,
-    color: '#F3D8FF',
+    color: '#8B7AA0',
     fontWeight: '700',
     writingDirection: 'rtl',
   },
   tabTextFocused: {
-    color: '#FFFFFF',
+    color: '#6A17DF',
   },
   activePill: {
     position: 'absolute',
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 5,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(106,23,223,0.7)',
   },
   mikasaWrap: {
     position: 'absolute',
@@ -286,20 +286,16 @@ const styles = StyleSheet.create({
   mikasaWrapPressed: {
     transform: [{ scale: 0.97 }],
   },
-  mikasaButton: {
+  mikasaGlow: {
     width: 82,
     height: 82,
     borderRadius: 41,
-    overflow: 'hidden',
-    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#4B1588',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 18,
     elevation: 14,
   },
   circleLogoImage: {

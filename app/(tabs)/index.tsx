@@ -40,7 +40,7 @@ const logoSource = require('@/assets/images/logo.png');
 export default function HomeScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const logoSize = Math.min(120, Math.max(80, windowWidth * 0.28));
+  const logoSize = Math.min(160, Math.max(100, windowWidth * 0.36));
   const profile = useAuthStore((state) => state.profile);
   const isGuest = useAuthStore((state) => state.isGuest);
   const logoutLocal = useAuthStore((state) => state.logoutLocal);
@@ -179,8 +179,8 @@ export default function HomeScreen() {
           </BlurView>
 
           <View style={styles.hero}>
-            <View style={[styles.homeLogoWrap, { width: logoSize, height: logoSize, borderRadius: logoSize / 2 }]}>
-              <Image source={logoSource} style={[styles.homeLogo, { width: logoSize, height: logoSize }]} resizeMode="cover" />
+            <View style={[styles.homeLogoWrap, { width: logoSize, height: logoSize }]}>
+              <Image source={logoSource} style={[styles.homeLogo, { width: logoSize, height: logoSize }]} resizeMode="contain" />
             </View>
             <Text style={styles.title}>שלום {profile?.displayName || 'שחקן'}</Text>
             <Text style={styles.subtitle}>מצא מעגל פתוח, בדוק התאמה לרמה שלך, והצטרף בלחיצה.</Text>
@@ -362,9 +362,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  homeLogo: {},
+  homeLogo: {
+    backgroundColor: 'transparent',
+  },
   homeLogoWrap: {
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
     fontSize: 34,
