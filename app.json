@@ -14,7 +14,6 @@
     },
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./config/firebase/GoogleService-Info.plist",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
