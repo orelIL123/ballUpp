@@ -1,9 +1,14 @@
-import { useState } from 'react';
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { ScreenScroll } from '@/components/ui/Screen';
 import { theme } from '@/constants/theme';
+import {
+  subscribeToHomeBulletins,
+  updateHomeBulletin,
+  type HomeBulletin,
+} from '@/services/bulletins.service';
 import { updatePlayerSettings } from '@/services/players.service';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -11,6 +16,8 @@ export default function ManagerAlertsScreen() {
   const profile = useAuthStore((state) => state.profile);
   const refreshProfile = useAuthStore((state) => state.refreshProfile);
   const [saving, setSaving] = useState(false);
+  const [bulletins, setBulletins] = useState<HomeBulletin[]>([]);
+  const [savingBulletinId, setSavingBulletinId] = useState<string | null>(null);
   const [settings, setSettings] = useState(
     profile?.notificationSettings ?? {
       nearbyCircles: true,
@@ -31,6 +38,15 @@ export default function ManagerAlertsScreen() {
   const toggle = (key: keyof typeof settings) => {
     setSettings((current) => ({ ...current, [key]: !current[key] }));
   };
+
+  useEffect(() => {
+    const unsubscribe = subscribeToHomeBulletins(
+      (nextBulletins) => setBulletins(nextBulletins),
+      (error) => Alert.alert('טעינת מודעות נכשלה', error.message),
+    );
+
+    return unsubscribe;
+  }, []);
 
   const save = async () => {
     if (!profile?.uid) {
@@ -86,7 +102,124 @@ export default function ManagerAlertsScreen() {
         />
         <Button title="שמירת הגדרות" loading={saving} onPress={save} />
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>שליטה על מודעות הבית</Text>
+        <Text style={styles.subtitle}>
+          כן. לאדמין יש עכשיו שליטה על המודעות שמופיעות במסך הבית: אפשר להפעיל, להסתיר ולעדכן טקסט בלי לגעת בקוד.
+        </Text>
+        {bulletins.map((bulletin) => (
+          <View key={bulletin.id} style={styles.bulletinCard}>
+            <View style={styles.bulletinToggleRow}>
+              <Switch
+                value={bulletin.active}
+                onValueChange={async (value) => {
+                  setSavingBulletinId(bulletin.id);
+                  try {
+                    await updateHomeBulletin(bulletin.id, { active: value });
+                  } catch (error) {
+                    Alert.alert('עדכון מודעה נכשל', error instanceof Error ? error.message : 'נסה שוב בעוד רגע.');
+                  } finally {
+                    setSavingBulletinId((current) => (current === bulletin.id ? null : current));
+                  }
+                }}
+                trackColor={{ false: '#E8D7E8', true: '#F66A86' }}
+                thumbColor="#FFFFFF"
+              />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>{bulletin.title}</Text>
+                <Text style={styles.settingHint}>{bulletin.tag}</Text>
+              </View>
+            </View>
+
+            <ManagerField
+              label="כותרת"
+              value={bulletin.title}
+              onChangeText={(value) =>
+                setBulletins((current) =>
+                  current.map((item) => (item.id === bulletin.id ? { ...item, title: value } : item)),
+                )
+              }
+            />
+            <ManagerField
+              label="תגית"
+              value={bulletin.tag}
+              onChangeText={(value) =>
+                setBulletins((current) =>
+                  current.map((item) => (item.id === bulletin.id ? { ...item, tag: value } : item)),
+                )
+              }
+            />
+            <ManagerField
+              label="תוכן"
+              value={bulletin.body}
+              multiline
+              onChangeText={(value) =>
+                setBulletins((current) =>
+                  current.map((item) => (item.id === bulletin.id ? { ...item, body: value } : item)),
+                )
+              }
+            />
+            <ManagerField
+              label="טקסט כפתור"
+              value={bulletin.ctaLabel}
+              onChangeText={(value) =>
+                setBulletins((current) =>
+                  current.map((item) => (item.id === bulletin.id ? { ...item, ctaLabel: value } : item)),
+                )
+              }
+            />
+
+            <Button
+              title="שמירת מודעה"
+              loading={savingBulletinId === bulletin.id}
+              onPress={async () => {
+                setSavingBulletinId(bulletin.id);
+                try {
+                  await updateHomeBulletin(bulletin.id, {
+                    title: bulletin.title.trim(),
+                    tag: bulletin.tag.trim(),
+                    body: bulletin.body.trim(),
+                    ctaLabel: bulletin.ctaLabel.trim(),
+                  });
+                  Alert.alert('המודעה נשמרה', 'מסך הבית יתעדכן מיידית.');
+                } catch (error) {
+                  Alert.alert('שמירת מודעה נכשלה', error instanceof Error ? error.message : 'נסה שוב בעוד רגע.');
+                } finally {
+                  setSavingBulletinId((current) => (current === bulletin.id ? null : current));
+                }
+              }}
+            />
+          </View>
+        ))}
+      </View>
     </ScreenScroll>
+  );
+}
+
+function ManagerField({
+  label,
+  value,
+  onChangeText,
+  multiline = false,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (value: string) => void;
+  multiline?: boolean;
+}) {
+  return (
+    <View style={styles.fieldWrap}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        multiline={multiline}
+        textAlign="right"
+        placeholderTextColor="#8C96A7"
+        style={[styles.input, multiline && styles.inputMultiline]}
+      />
+    </View>
   );
 }
 
@@ -148,6 +281,19 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 8,
   },
+  bulletinCard: {
+    gap: 10,
+    padding: 14,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EED6E8',
+  },
+  bulletinToggleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 14,
+  },
   settingContent: {
     flex: 1,
     gap: 4,
@@ -162,5 +308,29 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     textAlign: 'right',
     writingDirection: 'rtl',
+  },
+  fieldWrap: {
+    gap: 6,
+  },
+  fieldLabel: {
+    color: theme.colors.deep,
+    fontWeight: '800',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  input: {
+    minHeight: 48,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E3EDF7',
+    backgroundColor: '#F7FBFF',
+    paddingHorizontal: 14,
+    color: theme.colors.deep,
+    writingDirection: 'rtl',
+  },
+  inputMultiline: {
+    minHeight: 90,
+    paddingTop: 12,
+    textAlignVertical: 'top',
   },
 });

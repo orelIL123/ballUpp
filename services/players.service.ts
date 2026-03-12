@@ -196,9 +196,9 @@ export async function completeUserProfile(input: CompleteProfileInput) {
       photoURL: input.photoUri ?? input.currentPhotoURL ?? '',
       videoURL: input.videoUri ?? input.currentVideoURL ?? '',
       level: input.level,
-      gender: current?.gender ?? 'other',
-      playStyle: current?.playStyle ?? 'social',
-      role: current?.role ?? 'player',
+      gender: input.gender ?? current?.gender ?? 'other',
+      playStyle: input.playStyle ?? current?.playStyle ?? 'social',
+      role: input.role ?? current?.role ?? 'player',
       city: input.city.trim(),
       location: {
         city: input.city.trim(),

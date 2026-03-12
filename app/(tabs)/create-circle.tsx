@@ -15,6 +15,7 @@ import { theme } from '@/constants/theme';
 import { createCircle } from '@/services/circles.service';
 import { useAuthStore } from '@/stores/auth.store';
 import type { CircleGenderRestriction, CircleRequiredLevel, CourtType } from '@/types/models';
+import { goBackOrReplace } from '@/utils/navigation';
 
 const LEVELS: CircleRequiredLevel[] = ['any', 'beginner', 'intermediate', 'expert'];
 const GENDER_OPTIONS: { value: CircleGenderRestriction; label: string }[] = [
@@ -161,12 +162,12 @@ export default function CreateCircleScreen() {
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.navBtn}>
+          <Pressable onPress={() => goBackOrReplace('/(tabs)')} style={styles.navBtn}>
             <SymbolView name="arrow.right" size={24} tintColor={theme.colors.deep} />
           </Pressable>
           <Text style={styles.title}>יצירת מעגל חברים</Text>
           <Pressable
-            onPress={() => Alert.alert('התראות', 'כאן יוצגו התראות על פתיחות ועדכוני מעגלים.')}
+            onPress={() => router.push(profile?.role === 'manager' ? '/manager-alerts' : '/(tabs)/availability')}
             style={styles.navBtn}
           >
             <SymbolView name="bell.fill" size={18} tintColor="#EF6A1A" />

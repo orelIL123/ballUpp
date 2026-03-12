@@ -26,7 +26,6 @@ const PHONE_REGEX = /^0?[2-9]\d{7,8}$/;
 
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
-  const [displayName, setDisplayName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -91,17 +90,6 @@ export default function LoginScreen() {
               </>
             ) : (
               <>
-                <View style={styles.fieldWrap}>
-                  <Text style={styles.label}>שם מלא</Text>
-                  <TextInput
-                    value={displayName}
-                    onChangeText={setDisplayName}
-                    textAlign="right"
-                    placeholder="איך קוראים לך?"
-                    placeholderTextColor="#8796A6"
-                    style={styles.input}
-                  />
-                </View>
                 <View style={styles.fieldWrap}>
                   <Text style={styles.label}>מספר טלפון</Text>
                   <TextInput

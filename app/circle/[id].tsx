@@ -22,6 +22,7 @@ import {
 import { getPlayersByIds } from '@/services/players.service';
 import { useAuthStore } from '@/stores/auth.store';
 import type { ChatMessage, Circle, UserProfile } from '@/types/models';
+import { goBackOrReplace } from '@/utils/navigation';
 import { formatTimestamp } from '@/utils/date';
 
 type MessageForm = {
@@ -128,7 +129,7 @@ export default function CircleDetailScreen() {
   if (!circle) {
     return (
       <ScreenView style={styles.empty}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Pressable onPress={() => goBackOrReplace('/(tabs)')} style={styles.backButton}>
           <ChevronRight size={22} color={theme.colors.deep} strokeWidth={2.5} />
           <Text style={styles.backLabel}>חזור</Text>
         </Pressable>
@@ -146,7 +147,10 @@ export default function CircleDetailScreen() {
 
   return (
     <ScreenScroll contentContainerStyle={styles.container}>
-      <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
+      <Pressable
+        onPress={() => goBackOrReplace('/(tabs)')}
+        style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+      >
         <ChevronRight size={22} color={theme.colors.deep} strokeWidth={2.5} />
         <Text style={styles.backLabel}>חזור</Text>
       </Pressable>

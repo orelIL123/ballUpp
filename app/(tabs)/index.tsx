@@ -12,6 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ import { useWindowDimensions } from 'react-native';
 import { CircleListGrouped } from '@/components/circles/CircleListGrouped';
 import { Button } from '@/components/ui/Button';
 import { theme } from '@/constants/theme';
+import { subscribeToHomeBulletins, type HomeBulletin } from '@/services/bulletins.service';
 import { logout } from '@/services/auth.service';
 import { joinCircle } from '@/services/circles.service';
 import { useAuthStore } from '@/stores/auth.store';
@@ -54,8 +56,14 @@ export default function HomeScreen() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [joiningCircleId, setJoiningCircleId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bulletinSectionY, setBulletinSectionY] = useState(0);
+  const [bulletins, setBulletins] = useState<HomeBulletin[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [urgentOnly, setUrgentOnly] = useState(false);
+  const [areaFilter, setAreaFilter] = useState<string>('all');
 
   const drawerProgress = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
   const currentUserId = profile?.uid ?? null;
 
   useEffect(() => {
@@ -71,10 +79,20 @@ export default function HomeScreen() {
     }).start();
   }, [drawerProgress, menuOpen]);
 
+  useEffect(() => {
+    const unsubscribe = subscribeToHomeBulletins(
+      (nextBulletins) => setBulletins(nextBulletins.filter((item) => item.active)),
+      () => setBulletins([]),
+    );
+
+    return unsubscribe;
+  }, []);
+
   const filteredCircles = useMemo(() => {
     const now = new Date();
     const weekAhead = new Date(now);
     weekAhead.setDate(now.getDate() + 7);
+    const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return circles.filter((circle) => {
       const matchesLevel =
@@ -86,10 +104,35 @@ export default function HomeScreen() {
           : dateFilter === 'today'
             ? isSameDay(circle.dateTime, now)
             : circleDate >= now && circleDate <= weekAhead;
+      const matchesUrgent = urgentOnly ? Boolean(circle.isUrgent) : true;
+      const matchesArea = areaFilter === 'all' ? true : circle.area === areaFilter;
+      const haystack = [
+        circle.title,
+        circle.city,
+        circle.area,
+        circle.location.name,
+        circle.creatorName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = normalizedSearch.length === 0 ? true : haystack.includes(normalizedSearch);
 
-      return matchesLevel && matchesDate;
+      return matchesLevel && matchesDate && matchesUrgent && matchesArea && matchesSearch;
     });
-  }, [circles, dateFilter, levelFilter]);
+  }, [areaFilter, circles, dateFilter, levelFilter, searchTerm, urgentOnly]);
+
+  const areaOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        circles
+          .map((circle) => circle.area?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+
+    return values.slice(0, 8);
+  }, [circles]);
 
   const nearbyCircles = useMemo(() => {
     const userCity = profile?.location?.city || profile?.city;
@@ -149,12 +192,23 @@ export default function HomeScreen() {
     outputRange: [0, 1],
   });
 
+  const scrollToBulletins = () => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, bulletinSectionY - 12),
+        animated: true,
+      });
+    });
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <ImageBackground source={HOME_BG} resizeMode="cover" blurRadius={3} style={StyleSheet.absoluteFillObject}>
         <View style={styles.backdrop} />
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.container,
             {
@@ -170,10 +224,7 @@ export default function HomeScreen() {
               <SymbolView name="line.3.horizontal" size={22} tintColor="#FFFFFF" />
             </Pressable>
             <Text style={styles.topTitle} numberOfLines={1}>המעגלים שלי</Text>
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => Alert.alert('התראות', 'כאן יוצגו התראות על מעגלים לפי האזור והרמה שבחרת.')}
-            >
+            <Pressable style={styles.iconButton} onPress={scrollToBulletins}>
               <SymbolView name="bell.badge" size={21} tintColor="#FFFFFF" />
             </Pressable>
           </BlurView>
@@ -201,6 +252,48 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          <View
+            style={styles.bulletinsCard}
+            onLayout={(event) => setBulletinSectionY(event.nativeEvent.layout.y)}
+          >
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderBadge}>
+                <Text style={styles.sectionHeaderBadgeText}>חדש</Text>
+              </View>
+              <View style={styles.sectionHeaderText}>
+                <Text style={styles.sectionTitle}>מודעות ונושא מרכזי</Text>
+                <Text style={styles.sectionSubtitle}>
+                  עדכונים מערכתיים, פתיחות דחופות ונושאים שחשוב לראות לפני שמצטרפים למעגל.
+                </Text>
+              </View>
+            </View>
+
+            {bulletins.map((bulletin, index) => (
+              <View
+                key={bulletin.id}
+                style={[
+                  styles.bulletinItem,
+                  index === 0 && styles.bulletinItemFeatured,
+                ]}
+              >
+                <View style={styles.bulletinTopRow}>
+                  <Text style={styles.bulletinTag}>{bulletin.tag}</Text>
+                  <Text style={styles.bulletinTitle}>{bulletin.title}</Text>
+                </View>
+                <Text style={styles.bulletinBody}>{bulletin.body}</Text>
+                <Button
+                  title={bulletin.ctaLabel}
+                  variant={index === 0 ? 'primary' : 'secondary'}
+                  onPress={() => router.push(bulletin.route)}
+                />
+              </View>
+            ))}
+
+            {bulletins.length === 0 ? (
+              <Text style={styles.emptyBulletinsText}>כרגע אין מודעות פעילות להצגה.</Text>
+            ) : null}
+          </View>
+
           <View style={styles.nearbyCard}>
             <Text style={styles.nearbyTitle}>מעגלים באיזורך</Text>
             <Text style={styles.nearbyBody}>
@@ -222,6 +315,50 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.filterBlock}>
+            <Text style={styles.filterTitle}>חיפוש ואזור</Text>
+            <TextInput
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder="חפש לפי אזור, עיר, חוף או שם מעגל"
+              placeholderTextColor="#8C96A7"
+              style={styles.searchInput}
+              textAlign="right"
+            />
+            <View style={styles.filterRow}>
+              <Button
+                title={urgentOnly ? 'דחוף בלבד' : 'כל הדחיפויות'}
+                variant={urgentOnly ? 'primary' : 'secondary'}
+                onPress={() => setUrgentOnly((current) => !current)}
+                style={styles.filterButton}
+              />
+              <Button
+                title="נקה חיפוש"
+                variant="ghost"
+                onPress={() => {
+                  setSearchTerm('');
+                  setAreaFilter('all');
+                  setUrgentOnly(false);
+                }}
+                style={styles.filterButton}
+              />
+            </View>
+            <View style={styles.filterRow}>
+              <Button
+                title="כל האזורים"
+                variant={areaFilter === 'all' ? 'primary' : 'secondary'}
+                onPress={() => setAreaFilter('all')}
+                style={styles.filterButton}
+              />
+              {areaOptions.map((area) => (
+                <Button
+                  key={area}
+                  title={area}
+                  variant={areaFilter === area ? 'primary' : 'secondary'}
+                  onPress={() => setAreaFilter(area)}
+                  style={styles.filterButton}
+                />
+              ))}
+            </View>
             <Text style={styles.filterTitle}>סינון לפי רמה</Text>
             <View style={styles.filterRow}>
               {LEVEL_FILTERS.map((level) => (
@@ -290,15 +427,9 @@ export default function HomeScreen() {
               <SymbolView name="person" size={18} tintColor={theme.colors.deep} />
               <Text style={styles.drawerItemLabel}>פרופיל</Text>
             </Pressable>
-            <Pressable
-              style={styles.drawerItem}
-              onPress={() => {
-                setMenuOpen(false);
-                Alert.alert('החברים שלי', 'המסך הזה יתחבר בקרוב לרשימת החברים.');
-              }}
-            >
-              <SymbolView name="person.2" size={18} tintColor={theme.colors.deep} />
-              <Text style={styles.drawerItemLabel}>החברים שלי</Text>
+            <Pressable style={styles.drawerItem} onPress={scrollToBulletins}>
+              <SymbolView name="megaphone" size={18} tintColor={theme.colors.deep} />
+              <Text style={styles.drawerItemLabel}>מודעות ועדכונים</Text>
             </Pressable>
             <Pressable style={[styles.drawerItem, styles.logoutItem]} onPress={handleLogout}>
               <SymbolView name="rectangle.portrait.and.arrow.right" size={18} tintColor={theme.colors.danger} />
@@ -394,6 +525,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     gap: 10,
   },
+  bulletinsCard: {
+    gap: 12,
+    padding: 18,
+    borderRadius: 28,
+    backgroundColor: '#FFF3D8D9',
+    borderWidth: 1,
+    borderColor: '#FFE7A6',
+  },
+  sectionHeader: {
+    flexDirection: 'row-reverse',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  sectionHeaderBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#EF6A1A',
+  },
+  sectionHeaderBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: '900',
+    writingDirection: 'rtl',
+  },
+  sectionHeaderText: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  sectionTitle: {
+    color: theme.colors.deep,
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  sectionSubtitle: {
+    color: '#6A4C55',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    lineHeight: 21,
+  },
+  bulletinItem: {
+    gap: 10,
+    padding: 14,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFFC4',
+    borderWidth: 1,
+    borderColor: '#FFFFFFAF',
+  },
+  bulletinItemFeatured: {
+    backgroundColor: '#FFF8E6',
+    borderColor: '#FFD77A',
+  },
+  bulletinTopRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulletinTag: {
+    color: '#EF6A1A',
+    fontWeight: '900',
+    writingDirection: 'rtl',
+  },
+  bulletinTitle: {
+    flex: 1,
+    color: theme.colors.deep,
+    fontSize: 17,
+    fontWeight: '900',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  bulletinBody: {
+    color: '#573F63',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    lineHeight: 21,
+  },
+  emptyBulletinsText: {
+    color: '#6A4C55',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    fontWeight: '700',
+  },
   metric: {
     flex: 1,
     minHeight: 96,
@@ -425,6 +641,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFFA8',
     borderWidth: 1,
     borderColor: '#FFFFFF8F',
+  },
+  searchInput: {
+    minHeight: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E3EDF7',
+    backgroundColor: '#F8FBFF',
+    paddingHorizontal: 14,
+    color: theme.colors.deep,
   },
   nearbyCard: {
     gap: 8,

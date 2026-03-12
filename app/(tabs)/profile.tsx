@@ -2,33 +2,18 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/constants/theme';
 import { LevelBadge } from '@/components/player/LevelBadge';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { ScreenView } from '@/components/ui/Screen';
-import { logout } from '@/services/auth.service';
 import { useAuthStore } from '@/stores/auth.store';
+import { goBackOrReplace } from '@/utils/navigation';
 
 export default function ProfileScreen() {
   const profile = useAuthStore((state) => state.profile);
-  const isGuest = useAuthStore((state) => state.isGuest);
-  const logoutLocal = useAuthStore((state) => state.logoutLocal);
-
-  const handleLogout = async () => {
-    try {
-      if (isGuest) {
-        logoutLocal();
-      } else {
-        await logout();
-      }
-      router.replace('/(auth)/login');
-    } catch (error) {
-      Alert.alert('התנתקות נכשלה', error instanceof Error ? error.message : 'נסה שוב בעוד רגע.');
-    }
-  };
 
   if (!profile) {
     return (
@@ -56,11 +41,11 @@ export default function ProfileScreen() {
     <LinearGradient colors={['#7D90B1', '#8BB0C7', '#DFA47D', '#56758A']} style={styles.root}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.iconButton}>
+          <Pressable onPress={() => goBackOrReplace('/(tabs)')} style={styles.iconButton}>
             <SymbolView name="chevron.left" size={22} tintColor={theme.colors.white} />
           </Pressable>
           <Text style={styles.title}>פרופיל שחקן</Text>
-          <Pressable onPress={() => router.push('/settings')} style={styles.iconButton}>
+          <Pressable onPress={() => router.push('/(tabs)/settings')} style={styles.iconButton}>
             <SymbolView name="gearshape.fill" size={20} tintColor={theme.colors.white} />
           </Pressable>
         </View>
@@ -107,7 +92,6 @@ export default function ProfileScreen() {
 
         <View style={styles.actions}>
           <Button title="עריכת פרופיל" variant="secondary" onPress={() => router.push('/onboarding')} />
-          <Button title="התנתקות" variant="ghost" onPress={handleLogout} />
         </View>
       </ScrollView>
     </LinearGradient>
@@ -315,6 +299,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 10,
+    paddingBottom: 110,
   },
   empty: {
     alignItems: 'center',
